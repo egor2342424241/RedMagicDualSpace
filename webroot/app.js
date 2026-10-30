@@ -1,4 +1,4 @@
-import { exec } from 'kernelsu';
+import { exec } from './kernelsu-api.js';
 
 const SCRIPT = 'sh /data/adb/modules/redmagicdualspace/scripts/dualspace.sh';
 const ALLOWED_ACTIONS = new Set(['status', 'create', 'switch-owner', 'switch-space']);
