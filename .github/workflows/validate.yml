@@ -1,0 +1,44 @@
+name: Validate KernelSU module
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run Python host tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Run WebUI bridge tests
+        run: node --test tests/test_webui_bridge.mjs
+      - name: Check JavaScript syntax
+        run: |
+          node --check webroot/app.js
+          node --check webroot/kernelsu-api.js
+      - name: Check shell syntax
+        run: |
+          sh -n scripts/dualspace.sh
+          sh -n tools/build-module.sh
+      - name: Build module ZIP
+        run: sh tools/build-module.sh dist/RedMagicDualSpace-${GITHUB_SHA::7}.zip
+      - name: Upload module artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RedMagicDualSpace-${{ github.sha }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 14

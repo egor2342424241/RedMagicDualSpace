@@ -1,0 +1,10 @@
+{
+  "name": "redmagicdualspace",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests -v",
+    "test:webui": "node --test tests/test_webui_bridge.mjs"
+  }
+}

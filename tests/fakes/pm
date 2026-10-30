@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+  list)
+    [ "${2:-}" = "users" ] || { echo "unsupported pm list" >&2; exit 2; }
+    default_users='UserInfo{0:Owner:13}'
+    printf '%s\n' "${FAKE_USERS:-$default_users}"
+    if [ -n "${FAKE_CREATED_USERS_FILE:-}" ] && [ -f "$FAKE_CREATED_USERS_FILE" ]; then
+      cat "$FAKE_CREATED_USERS_FILE"
+    fi
+    ;;
+  create-user)
+    if [ -n "${FAKE_CREATE_LOG:-}" ]; then printf '%s\n' "$*" >> "$FAKE_CREATE_LOG"; fi
+    if [ -n "${FAKE_CREATE_ERROR:-}" ]; then echo "$FAKE_CREATE_ERROR" >&2; exit 1; fi
+    output=${FAKE_CREATE_OUTPUT:-Success: created user id 10}
+    printf '%s\n' "$output"
+    id=$(printf '%s\n' "$output" | sed -n 's/.*created user id \([0-9][0-9]*\).*/\1/p' | tail -n 1)
+    if [ -n "$id" ] && [ -n "${FAKE_CREATED_USERS_FILE:-}" ]; then
+      printf 'UserInfo{%s:RedMagic DualSpace:10}\n' "$id" >> "$FAKE_CREATED_USERS_FILE"
+    fi
+    ;;
+  *) echo "unsupported pm command: $*" >&2; exit 2 ;;
+esac

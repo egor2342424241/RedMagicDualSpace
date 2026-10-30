@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+  get-current-user) printf '%s\n' "${FAKE_CURRENT_USER:-0}" ;;
+  switch-user)
+    [ -n "${FAKE_AM_LOG:-}" ] && printf 'switch-user %s\n' "${2:-}" >> "$FAKE_AM_LOG"
+    echo "switched to user ${2:-}"
+    ;;
+  *) echo "unsupported am command: $*" >&2; exit 2 ;;
+esac

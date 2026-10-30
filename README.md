@@ -1,39 +1,62 @@
 # RedMagicDualSpace
 
-KernelSU module prototype for REDMAGIC 10 Pro (NX789J, Android 16 / REDMAGIC OS 11).
+Экспериментальный модуль KernelSU для **REDMAGIC 10 Pro (NX789J)**, Android 16 / REDMAGIC OS 11.
 
-> **Status: experimental / device validation required.** This repository does not claim that Magic Key interception, a Settings integration, independent Wi-Fi configuration, or PIN provisioning works on this firmware yet.
+> **Важно:** это управление вторым пользователем Android, а не вторая установленная операционная система. До проверки на реальном NX789J совместимость функций прошивки считается неподтверждённой.
 
-## Current scope
+## Что есть в первой версии
 
-- KernelSU WebUI dashboard.
-- Read-only device and Android multi-user diagnostics.
-- Explicit creation of one clean Android secondary user.
-- Explicit switching between the owner (user 0) and the managed secondary user.
-- No automatic boot-time user creation, no deletion action, and no background polling.
-- No attempt to patch Settings.apk or SystemUI.
+- WebUI внутри KernelSU Manager.
+- Диагностика модели, версии Android, текущего пользователя и списка пользователей.
+- Явное создание одного чистого пользователя Android с именем `RedMagic DualSpace`.
+- Переключение между основным пользователем (ID 0) и созданным пространством.
+- Проверка ID по актуальному `pm list users` перед переключением.
+- Хранение ID в `/data/adb/redmagicdualspace/user_id`, отдельно от каталога обновляемого модуля.
+- Нет автоматического создания пользователя при загрузке, фонового опроса Magic Key или удаления профилей.
 
-## Important limitations
+## Ограничения
 
-Android secondary users share the device OS, kernel, radio hardware, and system services. App data and user storage are separated by Android's multi-user model, but Wi-Fi and mobile connectivity are device-wide in the normal Android architecture. A separate per-user VPN may be configured later, but it is not equivalent to separate network hardware/settings.
+- У пользователей отдельные аккаунты, данные приложений и пользовательское пространство файлов; сама ОС, ядро и оборудование остаются общими.
+- Wi-Fi и мобильная связь в стандартной модели Android не становятся независимыми для каждого пользователя. Настройки профиля также могут включать общие системные параметры.
+- Magic Key пока не перехватывается: нужно установить реальное событие/intent на этой прошивке, прежде чем включать автоматическое переключение.
+- Модуль не меняет `Settings.apk`, SystemUI или framework. Пункт «Второе пространство» в системных настройках пока не добавлен.
+- PIN/пароль задаётся средствами Android после входа во второй профиль, если REDMAGIC OS поддерживает отдельную блокировку пользователя. Модуль не собирает, не задаёт и не хранит пароль.
+- REDMAGIC OS может ограничивать создание дополнительных пользователей. Если `pm create-user` будет отклонён системой, модуль покажет ошибку и не будет обходить ограничение.
 
-The REDMAGIC Magic Key currently exposes OEM actions in Settings. Its hardware event or broadcast has not yet been identified. Automatic switching is deliberately disabled until an actual event is observed on the target device.
+## Тестовая установка
 
-A separate Android user can be protected with the normal Android lock-screen credential when the firmware supports that flow. This module will never store or set a PIN itself.
+Не устанавливай ZIP, пока GitHub Actions не завершится успешно и пока нет резервной копии важных данных.
 
-## Installation (when a validated ZIP is published)
+1. Установи ZIP через KernelSU Manager.
+2. Открой WebUI модуля в KernelSU Manager.
+3. Нажми «Обновить данные». Убедись, что текущий пользователь — `0`.
+4. Только после этого нажми «Создать второе пространство» и подтверди действие.
+5. После создания перейди во второе пространство. Первичная настройка профиля и установка приложений выполняются штатными средствами Android.
+6. Настрой блокировку второго пользователя через настройки Android, если прошивка предоставляет такую возможность.
 
-1. Install the ZIP from KernelSU Manager.
-2. Reboot only when the build instructions explicitly require it.
-3. Open the module's WebUI.
-4. Run diagnostics before creating a user.
-5. Create the secondary user only after reviewing the device's reported user limit.
+Не удаляй пользователя вручную, пока модуль тестируется: сначала нужно сверить состояние профиля и сохранённый ID.
 
-Do not install experimental builds on a device with important unbacked-up data.
+## Сборка из исходников
 
-## Device validation still required
+Для ZIP-сборки требуется только Python 3:
 
-Run from a computer with ADB:
+```sh
+python3 -m unittest discover -s tests -v
+node --test tests/test_webui_bridge.mjs
+node --check webroot/app.js
+node --check webroot/kernelsu-api.js
+sh -n scripts/dualspace.sh
+sh -n tools/build-module.sh
+sh tools/build-module.sh
+```
+
+Готовый файл появится в `dist/RedMagicDualSpace-0.1.0-alpha.1.zip`. Node.js 22 нужен только для запуска теста JavaScript-моста. Сам ZIP собирается стандартной библиотекой Python, без загрузки npm-пакетов.
+
+GitHub Actions запускает проверки и прикрепляет ZIP как artifact при push в `main` или `feat/**`, а также при pull request в `main`.
+
+## Диагностика для проверки на телефоне
+
+С компьютера с ADB выполни команды и сохрани полный вывод:
 
 ```sh
 adb shell pm list users
@@ -45,12 +68,22 @@ adb shell getprop ro.build.version.release
 adb shell getevent -lp
 ```
 
-For Magic Key investigation, compare input/event logs while moving the slider through both positions. Do not infer a trigger from the Game Space screen alone.
+Для проверки Magic Key отдельно сравнивай входные события до и после перемещения слайдера. Не включай автоматизацию на основании одного лишь открытия Game Space.
 
-## Development
+## Статусы функций
 
-The module uses shell scripts and a static KernelSU WebUI. Shell behavior is covered by host-side tests where possible. Device-only functions must be marked **UNVERIFIED** until tested on REDMAGIC 10 Pro NX789J running Android 16 / REDMAGIC OS 11.
+| Функция | Статус |
+|---|---|
+| WebUI KernelSU | Реализовано в исходниках; проверяется CI |
+| Диагностика | Реализовано; нужна проверка на устройстве |
+| Создание второго пользователя | Реализовано через Android `pm`; OEM-совместимость не подтверждена |
+| Переключение пользователей | Реализовано через Android `am`; OEM-совместимость не подтверждена |
+| Отдельные данные приложений | Обеспечивает Android multi-user; проверка на телефоне ожидается |
+| Отдельный PIN/пароль | Зависит от системного интерфейса прошивки; не подтверждено |
+| Автопереключение Magic Key | Не реализовано до определения аппаратного события |
+| Отдельные Wi-Fi/мобильные настройки | Не обещается стандартной архитектурой Android |
+| Пункт в системных настройках | Не реализован; требуется стабильный OEM-механизм |
 
-## License
+## Лицензия
 
-MIT
+MIT. См. [LICENSE](LICENSE).

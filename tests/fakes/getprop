@@ -1,0 +1,8 @@
+#!/bin/sh
+case "${1:-}" in
+  ro.product.model) echo "NX789J" ;;
+  ro.product.marketname) echo "REDMAGIC 10 Pro" ;;
+  ro.build.version.release) echo "16" ;;
+  ro.build.display.id) echo "REDMAGIC OS 11" ;;
+  *) echo "" ;;
+esac
