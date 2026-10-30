@@ -1,5 +1,7 @@
 import os
 import pathlib
+import shutil
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -14,11 +16,18 @@ class DualSpaceControllerTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.tmp = pathlib.Path(self.temp.name)
         self.state = self.tmp / "state"
+        self.fake_bin = self.tmp / "bin"
+        self.fake_bin.mkdir()
+        for fake in FAKES.iterdir():
+            if fake.is_file():
+                target = self.fake_bin / fake.name
+                shutil.copyfile(fake, target)
+                target.chmod(0o755)
         self.log = self.tmp / "am.log"
         self.create_log = self.tmp / "create.log"
         self.env = os.environ.copy()
         self.env.update({
-            "PATH": str(FAKES) + os.pathsep + self.env.get("PATH", ""),
+            "PATH": str(self.fake_bin) + os.pathsep + self.env.get("PATH", ""),
             "RMDSS_STATE_DIR": str(self.state),
             "FAKE_CURRENT_USER": "0",
             "FAKE_USERS": "UserInfo{0:Owner:13}",
@@ -44,7 +53,31 @@ class DualSpaceControllerTests(unittest.TestCase):
         result = self.run_controller("create")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.state / "user_id").read_text().strip(), "10")
+        self.assertEqual(stat.S_IMODE(self.state.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE((self.state / "user_id").stat().st_mode), 0o600)
         self.assertIn("10", result.stdout)
+        self.assertEqual(
+            self.create_log.read_text().strip(),
+            "create-user --user-type android.os.usertype.full.SECONDARY RedMagic DualSpace",
+        )
+
+    def test_create_rejects_missing_user_id_in_command_output(self):
+        self.env["FAKE_CREATE_OUTPUT"] = "Success but no user identifier"
+        result = self.run_controller("create")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("valid user ID", result.stderr)
+        self.assertFalse((self.state / "user_id").exists())
+
+    def test_controller_rejects_extra_arguments(self):
+        result = subprocess.run(
+            ["sh", str(SCRIPT), "status", "unexpected"],
+            text=True,
+            capture_output=True,
+            env=self.env,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no extra arguments", result.stderr)
 
     def test_create_reuses_existing_exact_name_user(self):
         self.env["FAKE_USERS"] = (
