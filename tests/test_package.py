@@ -27,6 +27,7 @@ class PackageTests(unittest.TestCase):
                     "scripts/dualspace.sh",
                     "webroot/index.html",
                     "webroot/app.js",
+                    "webroot/kernelsu-api.js",
                     "webroot/style.css",
                 }.issubset(names))
                 metadata = archive.read("module.prop").decode("utf-8")
@@ -35,9 +36,10 @@ class PackageTests(unittest.TestCase):
                 self.assertEqual((script.external_attr >> 16) & 0o777, 0o755)
                 self.assertNotIn("service.sh", names)
                 self.assertNotIn("uninstall.sh", names)
-                bundled = archive.read("webroot/app.js").decode("utf-8")
-                self.assertNotIn("from 'kernelsu'", bundled)
-                self.assertIn("exec", bundled)
+                app = archive.read("webroot/app.js").decode("utf-8")
+                bridge = archive.read("webroot/kernelsu-api.js").decode("utf-8")
+                self.assertIn("./kernelsu-api.js", app)
+                self.assertIn("window.ksu.exec", bridge)
 
 
 if __name__ == "__main__":
