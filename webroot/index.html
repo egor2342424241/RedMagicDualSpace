@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>RedMagicDualSpace</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app" class="shell">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">R</div>
+      <div>
+        <p class="eyebrow">KERNELSU MODULE</p>
+        <h1>RedMagicDualSpace</h1>
+        <p class="subtitle">Управление вторым Android-профилем</p>
+      </div>
+    </header>
+
+    <section class="status-card" aria-labelledby="status-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">СОСТОЯНИЕ УСТРОЙСТВА</p>
+          <h2 id="status-title">Диагностика</h2>
+        </div>
+        <span id="status-indicator" class="indicator" role="status">Проверка…</span>
+      </div>
+      <pre id="output" class="output" aria-live="polite">Чтение данных устройства…</pre>
+      <div class="actions">
+        <button class="button button-secondary" data-action="status" type="button">Обновить данные</button>
+      </div>
+    </section>
+
+    <section class="space-card" aria-labelledby="space-title">
+      <p class="eyebrow">ВТОРОЙ ПРОФИЛЬ</p>
+      <h2 id="space-title">Чистое пространство</h2>
+      <p class="description">Создаётся штатный отдельный пользователь Android. Приложения и их личные данные у него отдельные от основного профиля.</p>
+      <button class="button button-primary" data-action="create" type="button">Создать второе пространство</button>
+      <div class="switch-grid">
+        <button class="button button-secondary" data-action="switch-space" type="button">Перейти во второе</button>
+        <button class="button button-secondary" data-action="switch-owner" type="button">Вернуться в основное</button>
+      </div>
+    </section>
+
+    <section class="notice-card" aria-label="Ограничения">
+      <h2>Перед использованием</h2>
+      <ul>
+        <li>Создание доступно только из основного пользователя Android (ID 0).</li>
+        <li>PIN или пароль задаётся средствами Android внутри второго пользователя. Модуль не запрашивает и не хранит его.</li>
+        <li>Wi-Fi и мобильная связь не становятся независимыми от основного профиля.</li>
+        <li>Автопереключение Magic Key пока не включено: событие кнопки ещё нужно проверить на самом NX789J.</li>
+      </ul>
+    </section>
+
+    <footer>REDMAGIC 10 Pro · Android 16 · REDMAGIC OS 11 · alpha</footer>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
