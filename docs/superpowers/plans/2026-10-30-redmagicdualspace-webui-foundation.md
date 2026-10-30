@@ -2,99 +2,79 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.
 
-**Goal:** Deliver a safe first KernelSU module build that can diagnose Android multi-user support, create one managed secondary user, and switch between the owner and that user through KernelSU WebUI.
+**Goal:** Deliver a safe first KernelSU module build that diagnoses Android multi-user support, creates one managed secondary user, and switches between users through KernelSU WebUI.
 
-**Architecture:** A small allowlisted shell controller owns all privileged Android commands. KernelSU WebUI invokes only fixed controller actions through the documented kernelsu package. Host-side tests exercise shell behavior with fake Android command binaries; GitHub Actions validates the ZIP layout.
+**Architecture:** An allowlisted shell controller owns all privileged Android commands. The WebUI calls only fixed operations through KernelSU Manager's documented `window.ksu.exec` bridge. Host tests exercise real shell control logic with fake Android commands; GitHub Actions validates source and ZIP layout.
 
-**Tech Stack:** POSIX shell, HTML/CSS/JavaScript, KernelSU WebUI JS API, Python 3 standard-library unittest, GitHub Actions.
+**Tech Stack:** POSIX shell, HTML/CSS/JavaScript, KernelSU WebView bridge, Python 3 standard library, Node.js 22 for JS bridge tests, GitHub Actions.
 
 **Spec:** docs/superpowers/specs/2026-10-30-redmagicdualspace-design.md
 
 ## Global Constraints
 
-- Target device: REDMAGIC 10 Pro (NX789J), Android 16, REDMAGIC OS 11.
-- Use Android's native full secondary user; do not claim a second OS.
-- Module interface: KernelSU WebUI only.
-- No background Magic Key polling or interception in this release.
-- No user deletion, PIN collection/storage, boot-time user creation, or Settings.apk/SystemUI patch.
-- All WebUI actions must use a fixed allowlist and validated user IDs.
-- Treat Wi-Fi/mobile network independence and native Settings integration as unsupported until verified.
+- Target: REDMAGIC 10 Pro NX789J, Android 16, REDMAGIC OS 11.
+- Use Android's full secondary-user type; this is not a second OS.
+- KernelSU WebUI only.
+- No Magic Key polling/interception until the actual event is identified on-device.
+- No profile deletion, PIN collection/storage, boot-time user creation, or Settings/SystemUI patching.
+- Fixed allowlisted operations and exact live user-ID validation.
+- Wi-Fi/mobile separation and native Settings integration are unverified and not advertised as supported.
 
 ## Review Focus
 
-- Existing managed user already present but saved ID missing.
-- Malformed or stale saved user ID.
-- Profile creation attempted while a non-owner user is active.
-- Android shell command missing or OEM user creation denied.
-- Command output containing spaces or unexpected failure text.
+- Existing exact-name profile with missing or stale stored ID.
+- Malformed command output and invalid user IDs.
+- User creation attempted outside owner user 0.
+- Android command unavailable or OEM denies user creation.
+- Duplicate exact-name profiles.
 
 ---
 
 ### Task 1: Shell controller and host tests
 
-**Files:**
-- Create: scripts/dualspace.sh
-- Create: tests/test_dualspace.py
-- Create: tests/fakes/pm
-- Create: tests/fakes/am
-- Create: tests/fakes/getprop
+**Files:** scripts/dualspace.sh; tests/test_dualspace.py; tests/fakes/pm; tests/fakes/am; tests/fakes/getprop.
 
-**Interfaces:**
-- Controller CLI: sh scripts/dualspace.sh {status|create|switch-owner|switch-space}
-- Test override only: RMDSS_STATE_DIR may redirect persisted state for host tests.
-- Persisted managed user ID: <state-dir>/user_id.
+**Interface:** `sh scripts/dualspace.sh {status|create|switch-owner|switch-space}`. State persists in `/data/adb/redmagicdualspace/user_id`, directory mode 0700, file mode 0600.
 
-- [ ] Write tests for owner-only creation, successful creation and ID persistence, idempotent reuse of an existing exact-name profile, second-user switching only after live-list verification, owner switching, and non-owner creation rejection.
-- [ ] Run python3 -m unittest discover -s tests -v; confirm expected failures before implementation.
-- [ ] Implement the allowlisted shell controller with a fixed user name, numeric ID validation, exact-name live-list verification, and explicit error output.
-- [ ] Run python3 -m unittest discover -s tests -v and sh -n scripts/dualspace.sh; both must pass.
-- [ ] Commit as feat: add safe Android secondary-user controller.
+- [x] Write tests for owner-only creation, ID persistence/permissions, exact-name idempotency, live-list verification, owner switch, invalid output, and bad arguments.
+- [x] Verify expected failures before implementation.
+- [x] Implement a fixed-name secondary user with `pm create-user --user-type android.os.usertype.full.SECONDARY`.
+- [x] Verify Python host suite: 11 tests passing.
+- [x] Commit: safe Android secondary-user controller.
 
-### Task 2: KernelSU metadata and WebUI
+### Task 2: KernelSU WebUI
 
-**Files:**
-- Create: module.prop
-- Create: webroot/index.html
-- Create: webroot/app.js
-- Create: webroot/style.css
+**Files:** module.prop; webroot/index.html; webroot/app.js; webroot/kernelsu-api.js; webroot/style.css; tests/test_webui_contract.py; tests/test_webui_bridge.mjs.
 
-**Interfaces:**
-- WebUI imports exec from kernelsu.
-- WebUI runs only sh /data/adb/modules/redmagicdualspace/scripts/dualspace.sh <fixed-operation>.
-- UI actions: diagnostics, create managed space (confirmation required), switch to owner, switch to managed space.
+**Interface:** JS adapter wraps `window.ksu.exec(command, optionsJson, callbackName)`. WebUI calls only the four fixed controller actions; create requires explicit confirmation.
 
-- [ ] Add a source-level test confirming the module metadata ID matches the fixed install path, WebUI entrypoint exists, and only the four fixed controller operations are exposed.
-- [ ] Run that test and confirm it fails before adding the module/WebUI files.
-- [ ] Add KernelSU metadata and a responsive WebUI with status display, clear warnings, and disabled controls while requests run.
-- [ ] Use await exec() and display both stdout and stderr; surface non-zero exit codes as failures.
-- [ ] Run the full Python test suite and shell syntax check; inspect the UI source for arbitrary command input.
-- [ ] Commit as feat: add KernelSU WebUI dashboard.
+- [x] Add the contract test for the WebUI entry point, fixed actions and bridge.
+- [x] Add responsive UI, visible command status/output, busy-state controls, and creation confirmation.
+- [x] Do not accept arbitrary shell command text.
+- [x] Verify Node bridge tests: 3 passing; Python contract tests: 3 passing.
 
-### Task 3: Build validation and user documentation
+### Task 3: Packaging and CI
 
-**Files:**
-- Create: .github/workflows/validate.yml
-- Create: tools/build-module.sh
-- Create: tests/test_package.py
-- Modify: README.md
+**Files:** .github/workflows/validate.yml; tools/build-module.sh; tests/test_package.py; README.md; LICENSE.
 
-**Interfaces:**
-- Build output: dist/RedMagicDualSpace-v<version>.zip.
-- ZIP root contains module.prop, scripts/dualspace.sh, and webroot/index.html.
+**Interface:** deterministic `dist/RedMagicDualSpace-<version>.zip`; the archive contains module.prop, the shell controller, and the complete WebUI. ZIP builder uses only Python standard library and does not need npm.
 
-- [ ] Write a package-layout test that fails when a required file or metadata field is missing.
-- [ ] Run the package test and observe the expected failure before adding the builder/workflow.
-- [ ] Implement deterministic ZIP packaging and GitHub Actions validation (Python tests, shell syntax, package build and layout inspection).
-- [ ] Document install, safe first-run sequence, current limitations, and exact ADB diagnostics required from the device.
-- [ ] Run all tests, build the archive, inspect its members, and run shell syntax validation.
-- [ ] Commit as build: add module packaging and CI validation.
+- [x] Add archive layout and file-mode checks.
+- [x] Add deterministic ZIP builder.
+- [x] Add CI for Python tests, Node bridge tests, JS syntax, shell syntax, ZIP build and artifact upload.
+- [x] Document first-run caution and unsupported device-specific features.
+- [x] Local verification: 14 Python tests, 3 Node tests, shell syntax, JS syntax and ZIP package test pass.
 
-## Device-only validation after this plan
+## Device-only validation
 
-Do not mark the following as complete without physical-device output:
-- pm list users and dumpsys user confirm creation/switch availability.
-- Second user can complete first-run setup and install an app independently.
-- Android keyguard accepts a separate credential for the second user.
-- Magic Key input/broadcast source is identified before enabling any automation.
-- Separate network behavior is measured rather than assumed.
-- Native Settings entry is implemented only if a stable vendor-supported mechanism is found.
+Not complete until tested on the physical NX789J:
+- `pm list users`, `dumpsys user`, secondary-user creation and switching.
+- Independent app installation and data separation.
+- Separate keyguard credential for the second user.
+- Magic Key event discovery and automatic switch.
+- Network behavior.
+- Supported native Settings entry, if any.
+
+## Review note
+
+Self-review only (no remote subagent/reviewer tool is available in this session). The ZIP is a host-validated alpha and is not yet device-validated.
