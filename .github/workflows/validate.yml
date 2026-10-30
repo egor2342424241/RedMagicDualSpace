@@ -1,0 +1,50 @@
+name: Validate module
+
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build WebUI bundle
+        run: npm run build:webui
+
+      - name: Validate shell syntax
+        run: sh -n scripts/dualspace.sh tools/build-module.sh
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Build KernelSU module ZIP
+        run: sh tools/build-module.sh
+
+      - name: Upload module ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: RedMagicDualSpace-${{ github.sha }}
+          path: dist/RedMagicDualSpace-*.zip
+          if-no-files-found: error
