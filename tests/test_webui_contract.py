@@ -19,9 +19,11 @@ class WebUiContractTests(unittest.TestCase):
     def test_webui_has_kernel_su_entrypoint_and_fixed_actions(self):
         index = (ROOT / "webroot" / "index.html").read_text()
         app = (ROOT / "webroot" / "app.js").read_text()
-        self.assertIn("id=\"app\"", index)
+        bridge = (ROOT / "webroot" / "kernelsu-api.js").read_text()
+        self.assertIn('id="app"', index)
         self.assertIn("app.js", index)
-        self.assertIn("import { exec } from 'kernelsu'", app)
+        self.assertIn("import { exec } from './kernelsu-api.js'", app)
+        self.assertIn("window.ksu.exec(command, JSON.stringify(options), callbackName)", bridge)
         for action in ("status", "create", "switch-owner", "switch-space"):
             self.assertIn(action, app)
         self.assertIn("new Set", app)
