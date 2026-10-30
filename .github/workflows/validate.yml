@@ -34,7 +34,7 @@ jobs:
           sh -n scripts/dualspace.sh
           sh -n tools/build-module.sh
       - name: Build module ZIP
-        run: tools/build-module.sh dist/RedMagicDualSpace-${GITHUB_SHA::7}.zip
+        run: sh tools/build-module.sh dist/RedMagicDualSpace-${GITHUB_SHA::7}.zip
       - name: Upload module artifact
         uses: actions/upload-artifact@v4
         with:
