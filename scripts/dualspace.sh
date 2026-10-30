@@ -47,7 +47,6 @@ resolve_managed_id() {
   users=$(list_users) || return 1
   ids=$(managed_ids "$users")
   [ -n "$ids" ] || fail "Managed user '$SPACE_NAME' was not found; create it first"
-  # More than one user with the reserved exact name is ambiguous.
   count=$(printf '%s\n' "$ids" | wc -l | tr -d ' ')
   [ "$count" = '1' ] || fail "Multiple users named '$SPACE_NAME' exist; refusing to choose"
   id=$ids
@@ -92,14 +91,13 @@ create_space() {
     return 0
   fi
   command -v pm >/dev/null 2>&1 || fail 'Android pm command is unavailable'
-  output=$(pm create-user "$SPACE_NAME" 2>&1) || {
+  output=$(pm create-user --user-type android.os.usertype.full.SECONDARY "$SPACE_NAME" 2>&1) || {
     echo "$output" >&2
     fail 'Android rejected secondary-user creation; no user was created by this module'
   }
   printf '%s\n' "$output"
   id=$(printf '%s\n' "$output" | sed -n 's/.*created user id \([0-9][0-9]*\).*/\1/p' | tail -n 1)
   validate_id "$id" || fail 'Creation output did not contain a valid user ID; inspect pm list users before retrying'
-  # Confirm the exact new profile exists before recording it.
   users=$(list_users) || return 1
   exact=$(managed_ids "$users")
   [ "$exact" = "$id" ] || fail 'Android did not report the newly created managed user under the expected exact name'
