@@ -1,0 +1,17 @@
+{
+  "name": "redmagicdualspace",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "KernelSU WebUI source and reproducible module packaging",
+  "scripts": {
+    "build:webui": "esbuild webroot/app.js --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/webroot/app.js",
+    "test": "python3 -m unittest discover -s tests -v"
+  },
+  "dependencies": {
+    "kernelsu": "3.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
